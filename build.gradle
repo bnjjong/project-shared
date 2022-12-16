@@ -1,0 +1,83 @@
+buildscript {
+    project.ext.set("nexusBaseUrl", System.getenv("NEXUS_URL"))
+    project.ext.set("nexusId", System.getenv("NEXUS_ID"))
+    project.ext.set("nexusPasswd", System.getenv("NEXUS_PASSWORD"))
+    project.ext.set("springVersion", "2.7.5")
+
+    repositories {
+        // for quality
+        gradlePluginPortal()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+        maven {
+            url "$nexusBaseUrl/maven-public/"
+            credentials {
+                username = "$nexusId"
+                password = "$nexusPasswd"
+            }
+        }
+        maven { url "$nexusBaseUrl/maven-releases/" }
+    }
+    dependencies {
+        // lombok
+        classpath "io.franzbecker:gradle-lombok:5.0.0"
+        // for quality
+        classpath 'ru.vyarus:gradle-quality-plugin:4.7.0'
+        // ascii doctor
+        classpath "org.asciidoctor:asciidoctor-gradle-jvm:3.3.2"
+        // spring boot
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springVersion}"
+        classpath "io.spring.gradle:dependency-management-plugin:1.0.11.RELEASE"
+        // commit lint
+        classpath "ru.netris:commitlint-plugin:1.4.1"
+        classpath "com.star-zero.gradle:githook:1.2.1"
+        // query dsl
+        classpath "gradle.plugin.com.ewerk.gradle.plugins:querydsl-plugin:1.0.10"
+        // gradle shared.
+        classpath 'io.bigin:bigin-gradle-repository:1.0.25-beta'
+
+        dependencies {
+            delete "gradle/ext"
+            def jars = configurations.classpath.files as List<File>
+            ant.unjar src: jars.find { it.name.matches '.*bigin-gradle-repository.*' }, dest: 'gradle/ext'
+        }
+    }
+}
+
+allprojects {
+
+    group = 'io.bnjjong'
+    version = '1.0'
+
+    repositories {
+        mavenLocal()    // maven local cache repository
+        mavenCentral()
+        google()
+        maven {
+            url "https://nexus-repo.dev.bigin.io/repository/maven-public/"
+            credentials {
+                username = "$nexusId"
+                password = "$nexusPasswd"
+            }
+        }
+        maven { url "https://repo.spring.io/snapshot" }
+        maven { url "https://repo.spring.io/milestone" }
+        maven { url "https://repo1.maven.org/maven2/" }
+        maven { url "$nexusBaseUrl/maven-releases/" }
+    }
+    tasks.withType(JavaCompile) {
+        options.encoding = "UTF-8"
+    }
+//    tasks.named("processResources") { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
+    tasks.withType(org.gradle.jvm.tasks.Jar) {
+        duplicatesStrategy = 'include'
+    }
+
+
+}
+
+subprojects {
+    apply from : "${project.getRootDir()}/gradle/ext/common.gradle"
+    apply from : "${project.getRootDir()}/gradle/ext/test.gradle"
+}
